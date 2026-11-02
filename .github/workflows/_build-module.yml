@@ -1,0 +1,99 @@
+# 单个模块的构建步骤 —— 由 build-modules.yml（PR/主干门禁）与 release.yml（手动发版）共用。
+#
+# 为什么不把矩阵写在这里：矩阵在两种场景下是同一份（5 个游戏版本 × 4 个加载器 = 20 个模块），
+# 但触发条件与后续动作不同 —— PR 上它是一道门禁，发版时它是产物来源。把「怎么构建一个模块」
+# 抽成这一份，两边都调它，20 个模块的构建口径就只有一处实现。
+#
+# 与 build-all.ps1 的关系：本地那份要处理 Clash TUN + fake-ip 导致的 TLS 握手超时
+# （ForgeGradle 7 的 mavenizer 连接超时硬编码 5 秒）、腾讯云 Gradle 镜像、以及按模块钉死
+# JDK 路径。CI 上这些前提全都不存在（runner 直连各官方源），所以这里刻意**不做** hosts 注入，
+# 也刻意**不用** wrapper（wrapper 的 distributionUrl 指向腾讯云镜像，从 GitHub runner 拉反而慢）：
+# 用 setup-gradle 按官方源装同一个 Gradle 版本，再把 gradle 放上 PATH 直接跑。
+#
+# JDK 的对应关系与 build-all.ps1 顶部那张表一致，理由也是同两条：
+#   * Gradle 发行版 / 构建插件能接受的最高守护进程 JVM（1.20.1fabric 用 Gradle 8.8，接不了 25）；
+#   * javac --release 的目标（26.x 要 release 25，必须真有一个 JDK 25）。
+# 各模块 gradle.properties 里的 org.gradle.java.installations.auto-download=false 保持不动：
+# 这里装的 JDK 就是 Gradle 自己跑的那个，而「当前 JVM」永远是 toolchain 的合法候选，
+# 所以 toolchain 解析能命中，不需要再报路径进去。
+
+name: build-module
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        description: 模块目录名，如 1.21.1fabric
+        required: true
+        type: string
+      jdk:
+        description: 守护进程 JDK 主版本（见 build-all.ps1 顶部的模块 → JDK 映射）
+        required: true
+        type: string
+      gradle:
+        description: 该模块用的 Gradle 版本（与它 gradle-wrapper.properties 里的一致）
+        required: true
+        type: string
+      task:
+        description: 要跑的 Gradle 任务
+        required: false
+        type: string
+        default: build
+    outputs:
+      jar:
+        description: 产出的可安装 jar 文件名
+        value: ${{ jobs.build.outputs.jar }}
+
+jobs:
+  build:
+    name: ${{ inputs.module }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      jar: ${{ steps.pick.outputs.jar }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # 构建只需要工作树，不要历史：20 个模块各跑一遍，fetch-depth 全量纯属浪费。
+          fetch-depth: 1
+
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.jdk }}
+
+      - uses: gradle/actions/setup-gradle@v6.4.1
+        with:
+          gradle-version: ${{ inputs.gradle }}
+
+      - name: 构建
+        working-directory: ${{ inputs.module }}
+        run: gradle ${{ inputs.task }} --console=plain --stacktrace
+
+      # 只挑「能直接丢进 mods/ 或 plugins/ 的那一个」。build/libs 里还躺着 -sources 与 loom 的
+      # -dev，用通配全收会把它们一起发出去 —— 与 build-all.ps1 的挑选口径保持同一条。
+      # 顺带把「挑出来的到底是不是一个」断言掉：jar 名对不上（比如 archives_base_name 漂了）
+      # 时这里当场红，而不是等到产物汇总了才发现少了谁。
+      - name: 挑选产物
+        id: pick
+        working-directory: ${{ inputs.module }}
+        run: |
+          set -euo pipefail
+          mapfile -t jars < <(find build/libs -maxdepth 1 -name '*.jar' \
+            | grep -vE -- '-sources\.jar$|-dev\.jar$|-dev-shadow\.jar$|-slim\.jar$' | sort)
+          if [ "${#jars[@]}" -ne 1 ]; then
+            echo "::error::build/libs 里可安装的 jar 不是恰好一个：${jars[*]:-（一个都没有）}"
+            exit 1
+          fi
+          jar=$(basename "${jars[0]}")
+          echo "产出：$jar"
+          echo "jar=$jar" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ${{ inputs.module }}
+          path: ${{ inputs.module }}/build/libs/${{ steps.pick.outputs.jar }}
+          if-no-files-found: error
+          # 构建产物本就是可重建的东西，不留太久（发版那一轮由 release 自己收走）。
+          retention-days: 7

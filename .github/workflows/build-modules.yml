@@ -1,0 +1,115 @@
+# 全量模块门禁：每次 push / PR 构建 5 个游戏版本 × 4 个加载器 = 20 个模块。
+#
+# 为什么这个仓值得跑全量 —— 与本地 build-all.ps1 同一个理由：core/ 与四个 *-common 不是
+# Gradle 依赖，而是被各模块 srcDirs **按值拷进**自己的 jar。于是「core 改了、某个加载器
+# 编不过」这件事在没有模块构建的地方看不出来：core-test 只编 core + gson，平台 import 静态
+# 检查只看得到 core。真正的风险面是「同一份 core 编进 20 个不同年代的工具链」——
+# Yarn 名与官方名（26.x）、loom 1.7.4 与 1.17、FG6 与 FG7、release 17 与 25，这几组差异
+# 只有各自真编一遍才能确认。本地那条命令要人记得跑，这里补上机器那道。
+#
+# 20 个 job 并发跑（public 仓的 standard runner 免费且并发额度够），fail-fast 关掉：
+# 一次能看到**所有**失败的模块，而不是修一个冒一个 —— 这是 20 项矩阵最实际的价值。
+#
+# 与 core-test.yml 的分工：那份仍然是最便宜的第一道闸（秒级～一分钟，不碰 MC 依赖），
+# 跑在每次 push/PR 上给最快反馈；这份是重闸。两者并行触发，互不阻塞。
+
+name: modules
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+# 同一分支的连续推送只留最新一次 —— PR 上尤其值得（改一行推三次，没必要建三遍 20 个模块）。
+# main 上不取消：主干每次提交都该留下一条完整的构建结论。
+concurrency:
+  group: modules-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ── 矩阵：顺序与 build-all.ps1 顶部的 targets 一致（fabric/paper → neoforge → forge），
+  #    JDK 与 Gradle 版本也逐项对齐那张表和各模块的 wrapper。
+  #    JDK 由两条约束共同决定：Gradle 发行版/构建插件能接受的最高守护进程 JVM，以及
+  #    javac --release 的目标（26.x 要 release 25，必须真有一个 JDK 25）。
+  build:
+    name: ${{ matrix.module }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── fabric / paper：没有外部前提，纯 Maven 依赖，最快也最稳 ──
+          - { module: 1.20.1fabric,    jdk: "17", gradle: "8.8" }
+          - { module: 1.20.1paper,     jdk: "17", gradle: "9.6.1" }
+          - { module: 1.21.1fabric,    jdk: "25", gradle: "9.6.1" }
+          - { module: 1.21.1paper,     jdk: "21", gradle: "9.6.1" }
+          - { module: 1.21.11fabric,   jdk: "25", gradle: "9.6.1" }
+          - { module: 1.21.11paper,    jdk: "21", gradle: "9.6.1" }
+          - { module: 26.2fabric,      jdk: "25", gradle: "9.6.1" }
+          - { module: 26.2paper,       jdk: "25", gradle: "9.6.1" }
+          - { module: 26.3fabric,      jdk: "25", gradle: "9.6.1" }
+          - { module: 26.3paper,       jdk: "25", gradle: "9.6.1" }
+          # ── neoforge：ModDevGradle。1.20.1 那个用的其实是 Forge 系 API（NeoForge 20.1 是 Forge 的分支）──
+          - { module: 1.20.1neoforge,  jdk: "17", gradle: "8.8" }
+          - { module: 1.21.1neoforge,  jdk: "21", gradle: "9.6.1" }
+          - { module: 1.21.11neoforge, jdk: "21", gradle: "9.6.1" }
+          - { module: 26.2neoforge,    jdk: "25", gradle: "9.6.1" }
+          - { module: 26.3neoforge,    jdk: "25", gradle: "9.6.1" }
+          # ── forge：ForgeGradle，依赖 MC 依赖在缓存里或公网可达。1.21.1 的 wrapper 停在 8.14.4 ──
+          - { module: 1.20.1forge,     jdk: "17", gradle: "8.8" }
+          - { module: 1.21.1forge,     jdk: "21", gradle: "8.14.4" }
+          - { module: 1.21.11forge,    jdk: "21", gradle: "9.6.1" }
+          - { module: 26.2forge,       jdk: "25", gradle: "9.6.0" }
+          - { module: 26.3forge,       jdk: "25", gradle: "9.6.0" }
+    uses: ./.github/workflows/_build-module.yml
+    with:
+      module: ${{ matrix.module }}
+      jdk: ${{ matrix.jdk }}
+      gradle: ${{ matrix.gradle }}
+
+  # 把 20 个模块的结论收成一句话：谁产出了什么 jar、缺了谁。
+  # 只读地汇总（不合并成发布产物 —— 那是 release.yml 的事），让「20/20」这件事在页面上有出处。
+  summary:
+    name: 汇总
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          path: artifacts
+
+      - name: 清点产物
+        run: |
+          set -euo pipefail
+          expected=(
+            1.20.1fabric 1.20.1forge 1.20.1neoforge 1.20.1paper
+            1.21.1fabric 1.21.1forge 1.21.1neoforge 1.21.1paper
+            1.21.11fabric 1.21.11forge 1.21.11neoforge 1.21.11paper
+            26.2fabric 26.2forge 26.2neoforge 26.2paper
+            26.3fabric 26.3forge 26.3neoforge 26.3paper
+          )
+          {
+            echo "## 模块产物"
+            echo
+            echo "| 模块 | jar |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          missing=()
+          for m in "${expected[@]}"; do
+            jar=$(find "artifacts/$m" -maxdepth 1 -name '*.jar' 2>/dev/null | head -1 || true)
+            if [ -z "$jar" ]; then
+              missing+=("$m")
+              echo "| $m | ❌ 无产物 |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| $m | \`$(basename "$jar")\` |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::以下模块没有产出 jar：${missing[*]}"
+            exit 1
+          fi
+          echo "20/20 个模块均产出可安装 jar" >> "$GITHUB_STEP_SUMMARY"

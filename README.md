@@ -149,7 +149,17 @@ check-repo.ps1     仓库自检（模块矩阵 / 版本一致 / core 平台无�
 
 ### CI
 
-GitHub Actions 只跑 core 单元测试与平台 import 静态检查（`.github/workflows/`）——刻意不构建 20 个模块（需要下 Minecraft 依赖，慢且脆；core 本就是同一份源码）。
+`.github/workflows/` 下三个 workflow，分工是「便宜的常驻、贵的按需」：
+
+| workflow | 何时跑 | 做什么 |
+| --- | --- | --- |
+| `core-test` | 每次 push / PR | core 单元测试 + 平台 import 静态检查，秒级出结果 |
+| `build-modules` | 每次 push / PR | **全量 20 个模块并行构建**，fail-fast 关掉：一次看到所有失败项 |
+| `release` | 手动触发 | 20 个模块构建后汇成 `<模块>__<jar>` 并挂到 GitHub Release |
+
+全量门禁存在的理由与本地 `build-all.ps1` 同一条：**core 与四个 `*-common` 不是 Gradle 依赖，而是被各模块 `srcDirs` 按值拷进自己的 jar**，所以「core 改了、某个加载器编不过」在没有模块构建的地方根本看不出来（`core-test` 只编 core + gson）。真正的风险面是同一份 core 编进 20 套不同年代的工具链 —— Yarn 名与官方名（26.x）、loom 1.7.4 与 1.17、FG6 与 FG7、release 17 与 25，只有各自真编一遍才能确认。
+
+发版刻意留成手动（打 tag 不自动发布）：自动发版时某个模块若恰好因上游抽风编不过，对外就成了「一半新一半旧」的产物，而不同 core 版本的 jar 混在同一个房间里通信正是本项目最怕的事。发版前先看本机 `build-all.ps1` 的结论，再在 Actions 里跑一遍跨环境复核。
 
 ### 配套项目
 
