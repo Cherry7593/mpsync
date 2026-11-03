@@ -1,5 +1,5 @@
 ﻿<#
-    mpsync 服务端 mod —— core 单元测试 + 二十个目标一次全构建，产物统一汇总。
+    mpsync 服务端 mod —— core 单元测试 + 二十八个目标一次全构建，产物统一汇总。
 
     为什么需要这个脚本：所有模块都不在 gradle.properties 里钉 org.gradle.java.home
     （刻意的：那会把某台机器的绝对路径写进工程，之前 modernMP 就是这么被一条失效路径卡住的；
@@ -51,19 +51,27 @@ $targets = [ordered]@{
     '1.20.1paper'     = $JDK17   # release 17
     '1.21.1fabric'    = $JDK25   # loom 1.17-SNAPSHOT，release 21
     '1.21.1paper'     = $JDK21   # release 21
+    '1.21.10fabric'   = $JDK25   # 与 1.21.11fabric 同一套 loom，release 21
+    '1.21.10paper'    = $JDK21
     '1.21.11fabric'   = $JDK25
     '1.21.11paper'    = $JDK21
-    '26.2fabric'      = $JDK25   # release 25：必须真有一个 JDK 25
+    '26.1.2fabric'    = $JDK25   # release 25：必须真有一个 JDK 25
+    '26.1.2paper'     = $JDK25
+    '26.2fabric'      = $JDK25
     '26.2paper'       = $JDK25
     # ── neoforge：ModDevGradle；1.20.1 那个用的其实是 Forge 系 API（NeoForge 20.1 是 Forge 的分支）
     '1.20.1neoforge'  = $JDK17
     '1.21.1neoforge'  = $JDK21
+    '1.21.10neoforge' = $JDK21
     '1.21.11neoforge' = $JDK21
+    '26.1.2neoforge'  = $JDK25
     '26.2neoforge'    = $JDK25
     # ── forge：ForgeGradle，依赖 Minecraft 依赖已在 forge_gradle 缓存里或公网可达 ──
     '1.20.1forge'     = $JDK17
     '1.21.1forge'     = $JDK21
+    '1.21.10forge'    = $JDK21   # ForgeGradle 7.x（Forge 60.x）
     '1.21.11forge'    = $JDK21
+    '26.1.2forge'     = $JDK25   # ForgeGradle 7.x（Forge 64.x）
     '26.2forge'       = $JDK25   # ForgeGradle 7.x
     # 26.3 家族：目标运行时同样是 Java 25（version json 的 javaVersion.majorVersion=25）。
     '26.3fabric'      = $JDK25
@@ -85,7 +93,7 @@ $TEST_PROJECT = 'core-test'
 # http.* / https.* / java.net.* / javax.net.ssl.* / jdk.tls.* 这几类前缀，jdk.net.hosts.file 不在其中；
 # 环境变量则是子进程天然继承的。配 --no-daemon 是因为 fork 继承的是**守护进程**的环境，
 # 复用一个早先没带这个变量启动的守护进程就白搭了。
-$FG7_MODULES = @('1.21.11forge', '26.2forge', '26.3forge')
+$FG7_MODULES = @('1.21.10forge', '1.21.11forge', '26.1.2forge', '26.2forge', '26.3forge')
 
 if ($TestOnly) { $Only = @($TEST_PROJECT) }
 

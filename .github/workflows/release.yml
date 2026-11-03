@@ -40,7 +40,7 @@ permissions:
 
 jobs:
   # ── 版本号自检：发版最容易犯的错是「代码是 1.4.0 而某个模块的 gradle.properties 还是 1.3.0」，
-  #    而 20 个 jar 混跑不会报错、只在房间里表现为行为不一致。先在便宜的 job 里挡住。
+  #    而 28 个 jar 混跑不会报错、只在房间里表现为行为不一致。先在便宜的 job 里挡住。
   guard:
     name: 版本号自检
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
             echo "::error::这些模块的版本号不是 $want：${bad[*]}（20 个 jar 必须同版，否则房间行为会不一致）"
             exit 1
           fi
-          echo "20 个模块的版本号都是 $want"
+          echo "28 个模块的版本号都是 $want"
 
   build:
     needs: guard
@@ -75,20 +75,28 @@ jobs:
           - { module: 1.20.1paper,     jdk: "17", gradle: "9.6.1" }
           - { module: 1.21.1fabric,    jdk: "25", gradle: "9.6.1" }
           - { module: 1.21.1paper,     jdk: "21", gradle: "9.6.1" }
+          - { module: 1.21.10fabric,   jdk: "25", gradle: "9.6.1" }
+          - { module: 1.21.10paper,    jdk: "21", gradle: "9.6.1" }
           - { module: 1.21.11fabric,   jdk: "25", gradle: "9.6.1" }
           - { module: 1.21.11paper,    jdk: "21", gradle: "9.6.1" }
+          - { module: 26.1.2fabric,    jdk: "25", gradle: "9.6.1" }
+          - { module: 26.1.2paper,     jdk: "25", gradle: "9.6.1" }
           - { module: 26.2fabric,      jdk: "25", gradle: "9.6.1" }
           - { module: 26.2paper,       jdk: "25", gradle: "9.6.1" }
           - { module: 26.3fabric,      jdk: "25", gradle: "9.6.1" }
           - { module: 26.3paper,       jdk: "25", gradle: "9.6.1" }
           - { module: 1.20.1neoforge,  jdk: "17", gradle: "8.8" }
           - { module: 1.21.1neoforge,  jdk: "21", gradle: "9.6.1" }
+          - { module: 1.21.10neoforge, jdk: "21", gradle: "9.6.1" }
           - { module: 1.21.11neoforge, jdk: "21", gradle: "9.6.1" }
+          - { module: 26.1.2neoforge,  jdk: "25", gradle: "9.6.1" }
           - { module: 26.2neoforge,    jdk: "25", gradle: "9.6.1" }
           - { module: 26.3neoforge,    jdk: "25", gradle: "9.6.1" }
           - { module: 1.20.1forge,     jdk: "17", gradle: "8.8" }
           - { module: 1.21.1forge,     jdk: "21", gradle: "8.14.4" }
+          - { module: 1.21.10forge,    jdk: "21", gradle: "9.6.1" }
           - { module: 1.21.11forge,    jdk: "21", gradle: "9.6.1" }
+          - { module: 26.1.2forge,     jdk: "25", gradle: "9.6.0" }
           - { module: 26.2forge,       jdk: "25", gradle: "9.6.0" }
           - { module: 26.3forge,       jdk: "25", gradle: "9.6.0" }
     with:
@@ -117,7 +125,9 @@ jobs:
           expected=(
             1.20.1fabric 1.20.1forge 1.20.1neoforge 1.20.1paper
             1.21.1fabric 1.21.1forge 1.21.1neoforge 1.21.1paper
+            1.21.10fabric 1.21.10forge 1.21.10neoforge 1.21.10paper
             1.21.11fabric 1.21.11forge 1.21.11neoforge 1.21.11paper
+            26.1.2fabric 26.1.2forge 26.1.2neoforge 26.1.2paper
             26.2fabric 26.2forge 26.2neoforge 26.2paper
             26.3fabric 26.3forge 26.3neoforge 26.3paper
           )

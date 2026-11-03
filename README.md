@@ -4,10 +4,10 @@
 
 **让整个服务器一起听歌。**
 
-<sub>*Server-side listen-together rooms for Minecraft. Players queue songs from their in-game music player, everyone hears the same track at the same moment. Works with any platform the client supports. 5 MC versions × 4 loaders (Fabric / Forge / NeoForge / Paper).*</sub>
+<sub>*Server-side listen-together rooms for Minecraft. Players queue songs from their in-game music player, everyone hears the same track at the same moment. Works with any platform the client supports. 7 MC versions × 4 loaders (Fabric / Forge / NeoForge / Paper).*</sub>
 
 [![版本](https://img.shields.io/badge/%E7%89%88%E6%9C%AC-1.3.0-e44050?style=flat-square&labelColor=2b2b33)](#安装)
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1%20%7C%201.21.1%20%7C%201.21.11%20%7C%2026.2%20%7C%2026.3-3d8528?style=flat-square&labelColor=2b2b33)](#支持的游戏版本)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1%20%7C%201.21.1%20%7C%201.21.10%20%7C%201.21.11%20%7C%2026.1.2%20%7C%2026.2%20%7C%2026.3-3d8528?style=flat-square&labelColor=2b2b33)](#支持的游戏版本)
 [![加载器](https://img.shields.io/badge/%E5%8A%A0%E8%BD%BD%E5%99%A8-Fabric%20%7C%20Forge%20%7C%20NeoForge%20%7C%20Paper-7a4fd0?style=flat-square&labelColor=2b2b33)](#支持的游戏版本)
 [![协议](https://img.shields.io/badge/%E5%8D%8F%E8%AE%AE-%E5%BC%80%E6%94%BE%E6%8E%A5%E5%85%A5-2f7fd0?style=flat-square&labelColor=2b2b33)](docs/接入指南.md)
 
@@ -106,13 +106,15 @@
 
 ### 支持的游戏版本
 
-5 个 Minecraft 版本 × 4 种服务端平台 = **20 个构建**，任选其一：
+7 个 Minecraft 版本 × 4 种服务端平台 = **28 个构建**，任选其一：
 
 | Minecraft | Fabric | Forge | NeoForge | Paper |
 | --- | :-: | :-: | :-: | :-: |
 | 1.20.1 | ✅ | ✅ | ✅ | ✅ |
 | 1.21.1 | ✅ | ✅ | ✅ | ✅ |
+| 1.21.10 | ✅ | ✅ | ✅ | ✅ |
 | 1.21.11 | ✅ | ✅ | ✅ | ✅ |
+| 26.1.2 | ✅ | ✅ | ✅ | ✅ |
 | 26.2 | ✅ | ✅ | ✅ | ✅ |
 | 26.3 | ✅ | ✅ | ✅ | ✅ |
 
@@ -142,8 +144,8 @@
 core/              与平台无关的房间引擎 + 线协议（只依赖 gson）
 core-test/         core 单元测试 + 「core 不许碰 Minecraft」编译期守卫
 fabric-common / paper-common / forge-common / neoforge-common   各平台适配层
-<版本><平台>/       20 个构建工程（版本 × 平台），共用同一份 core 源码
-build-all.ps1      构建驱动：自检 -> core 测试 -> 20 模块 -> 产物汇总
+<版本><平台>/       28 个构建工程（版本 × 平台），共用同一份 core 源码
+build-all.ps1      构建驱动：自检 -> core 测试 -> 28 模块 -> 产物汇总
 check-repo.ps1     仓库自检（模块矩阵 / 版本一致 / core 平台无关性）
 ```
 
@@ -156,10 +158,10 @@ check-repo.ps1     仓库自检（模块矩阵 / 版本一致 / core 平台无�
 | workflow | 何时跑 | 做什么 |
 | --- | --- | --- |
 | `core-test` | 每次 push / PR | core 单元测试 + 平台 import 静态检查，秒级出结果 |
-| `build-modules` | 每次 push / PR | **全量 20 个模块并行构建**，fail-fast 关掉：一次看到所有失败项 |
-| `release` | 手动触发 | 20 个模块构建后汇成 `<模块>__<jar>` 并挂到 GitHub Release |
+| `build-modules` | 每次 push / PR | **全量 28 个模块并行构建**，fail-fast 关掉：一次看到所有失败项 |
+| `release` | 手动触发 | 28 个模块构建后汇成 `<模块>__<jar>` 并挂到 GitHub Release |
 
-全量门禁存在的理由与本地 `build-all.ps1` 同一条：**core 与四个 `*-common` 不是 Gradle 依赖，而是被各模块 `srcDirs` 按值拷进自己的 jar**，所以「core 改了、某个加载器编不过」在没有模块构建的地方根本看不出来（`core-test` 只编 core + gson）。真正的风险面是同一份 core 编进 20 套不同年代的工具链 —— Yarn 名与官方名（26.x）、loom 1.7.4 与 1.17、FG6 与 FG7、release 17 与 25，只有各自真编一遍才能确认。
+全量门禁存在的理由与本地 `build-all.ps1` 同一条：**core 与四个 `*-common` 不是 Gradle 依赖，而是被各模块 `srcDirs` 按值拷进自己的 jar**，所以「core 改了、某个加载器编不过」在没有模块构建的地方根本看不出来（`core-test` 只编 core + gson）。真正的风险面是同一份 core 编进 28 套不同年代的工具链 —— Yarn 名与官方名（26.x）、loom 1.7.4 与 1.17、FG6 与 FG7、release 17 与 25，只有各自真编一遍才能确认。
 
 发版刻意留成手动（打 tag 不自动发布）：自动发版时某个模块若恰好因上游抽风编不过，对外就成了「一半新一半旧」的产物，而不同 core 版本的 jar 混在同一个房间里通信正是本项目最怕的事。发版前先看本机 `build-all.ps1` 的结论，再在 Actions 里跑一遍跨环境复核。
 

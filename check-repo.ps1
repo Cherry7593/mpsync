@@ -22,8 +22,8 @@ $problems = New-Object System.Collections.Generic.List[string]
 function Add-Problem([string] $msg) { [void] $problems.Add($msg) }
 function Say([string] $msg) { if (-not $Quiet) { Write-Host $msg } }
 
-# 期望的模块矩阵：4 个游戏版本 x 4 个平台。多一个少一个都要人过一眼。
-$mcVersions = @('1.20.1', '1.21.1', '1.21.11', '26.2', '26.3')
+# 期望的模块矩阵：7 个游戏版本 x 4 个平台。多一个少一个都要人过一眼。
+$mcVersions = @('1.20.1', '1.21.1', '1.21.10', '1.21.11', '26.1.2', '26.2', '26.3')
 $loaders    = @('fabric', 'forge', 'neoforge', 'paper')
 $expected   = foreach ($mc in $mcVersions) { foreach ($ld in $loaders) { "$mc$ld" } }
 
@@ -163,7 +163,9 @@ if (-not (Test-Path $ctBuild)) {
 $forgeGradleMajor = [ordered]@{
     '1.20.1forge'  = @{ fg = 6; gradle = 8 }
     '1.21.1forge'  = @{ fg = 6; gradle = 8 }
+    '1.21.10forge' = @{ fg = 7; gradle = 9 }
     '1.21.11forge' = @{ fg = 7; gradle = 9 }
+    '26.1.2forge'  = @{ fg = 7; gradle = 9 }
     '26.2forge'    = @{ fg = 7; gradle = 9 }
 }
 foreach ($m in $forgeGradleMajor.Keys) {

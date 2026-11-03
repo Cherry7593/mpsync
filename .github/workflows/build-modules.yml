@@ -1,4 +1,4 @@
-# 全量模块门禁：每次 push / PR 构建 5 个游戏版本 × 4 个加载器 = 20 个模块。
+# 全量模块门禁：每次 push / PR 构建 7 个游戏版本 × 4 个加载器 = 28 个模块。
 #
 # 为什么这个仓值得跑全量 —— 与本地 build-all.ps1 同一个理由：core/ 与四个 *-common 不是
 # Gradle 依赖，而是被各模块 srcDirs **按值拷进**自己的 jar。于是「core 改了、某个加载器
@@ -46,8 +46,12 @@ jobs:
           - { module: 1.20.1paper,     jdk: "17", gradle: "9.6.1" }
           - { module: 1.21.1fabric,    jdk: "25", gradle: "9.6.1" }
           - { module: 1.21.1paper,     jdk: "21", gradle: "9.6.1" }
+          - { module: 1.21.10fabric,   jdk: "25", gradle: "9.6.1" }
+          - { module: 1.21.10paper,    jdk: "21", gradle: "9.6.1" }
           - { module: 1.21.11fabric,   jdk: "25", gradle: "9.6.1" }
           - { module: 1.21.11paper,    jdk: "21", gradle: "9.6.1" }
+          - { module: 26.1.2fabric,    jdk: "25", gradle: "9.6.1" }
+          - { module: 26.1.2paper,     jdk: "25", gradle: "9.6.1" }
           - { module: 26.2fabric,      jdk: "25", gradle: "9.6.1" }
           - { module: 26.2paper,       jdk: "25", gradle: "9.6.1" }
           - { module: 26.3fabric,      jdk: "25", gradle: "9.6.1" }
@@ -55,13 +59,17 @@ jobs:
           # ── neoforge：ModDevGradle。1.20.1 那个用的其实是 Forge 系 API（NeoForge 20.1 是 Forge 的分支）──
           - { module: 1.20.1neoforge,  jdk: "17", gradle: "8.8" }
           - { module: 1.21.1neoforge,  jdk: "21", gradle: "9.6.1" }
+          - { module: 1.21.10neoforge, jdk: "21", gradle: "9.6.1" }
           - { module: 1.21.11neoforge, jdk: "21", gradle: "9.6.1" }
+          - { module: 26.1.2neoforge,  jdk: "25", gradle: "9.6.1" }
           - { module: 26.2neoforge,    jdk: "25", gradle: "9.6.1" }
           - { module: 26.3neoforge,    jdk: "25", gradle: "9.6.1" }
           # ── forge：ForgeGradle，依赖 MC 依赖在缓存里或公网可达。1.21.1 的 wrapper 停在 8.14.4 ──
           - { module: 1.20.1forge,     jdk: "17", gradle: "8.8" }
           - { module: 1.21.1forge,     jdk: "21", gradle: "8.14.4" }
+          - { module: 1.21.10forge,    jdk: "21", gradle: "9.6.1" }
           - { module: 1.21.11forge,    jdk: "21", gradle: "9.6.1" }
+          - { module: 26.1.2forge,     jdk: "25", gradle: "9.6.0" }
           - { module: 26.2forge,       jdk: "25", gradle: "9.6.0" }
           - { module: 26.3forge,       jdk: "25", gradle: "9.6.0" }
     uses: ./.github/workflows/_build-module.yml
@@ -70,7 +78,7 @@ jobs:
       jdk: ${{ matrix.jdk }}
       gradle: ${{ matrix.gradle }}
 
-  # 把 20 个模块的结论收成一句话：谁产出了什么 jar、缺了谁。
+  # 把 28 个模块的结论收成一句话：谁产出了什么 jar、缺了谁。
   # 只读地汇总（不合并成发布产物 —— 那是 release.yml 的事），让「20/20」这件事在页面上有出处。
   summary:
     name: 汇总
@@ -88,7 +96,9 @@ jobs:
           expected=(
             1.20.1fabric 1.20.1forge 1.20.1neoforge 1.20.1paper
             1.21.1fabric 1.21.1forge 1.21.1neoforge 1.21.1paper
+            1.21.10fabric 1.21.10forge 1.21.10neoforge 1.21.10paper
             1.21.11fabric 1.21.11forge 1.21.11neoforge 1.21.11paper
+            26.1.2fabric 26.1.2forge 26.1.2neoforge 26.1.2paper
             26.2fabric 26.2forge 26.2neoforge 26.2paper
             26.3fabric 26.3forge 26.3neoforge 26.3paper
           )
@@ -112,4 +122,4 @@ jobs:
             echo "::error::以下模块没有产出 jar：${missing[*]}"
             exit 1
           fi
-          echo "20/20 个模块均产出可安装 jar" >> "$GITHUB_STEP_SUMMARY"
+          echo "28/28 个模块均产出可安装 jar" >> "$GITHUB_STEP_SUMMARY"
