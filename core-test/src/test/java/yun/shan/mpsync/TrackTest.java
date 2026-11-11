@@ -82,6 +82,24 @@ class TrackTest {
     }
 
     @Test
+    void bilibiliPageTrackIdIsAcceptedAndKeepsDistinctIdentity() {
+        // 客户端 2.5.1 起分P曲目 id 是 BV…_p2（页码后缀用下划线，避开身份键分隔符冒号，
+        // 见客户端仓库 issue #21）。下划线从来都在放行之列 —— 这条契约同时钉住：
+        // 1) 新格式能入队；2) P1 与 P2 的身份键不撞（否则去重会把第二首拒掉）；
+        // 3) 旧格式 BV…:2 依旧被拒（老客户端的存量 id 靠客户端上行前归一，服务端不放行冒号）。
+        MpConfig cfg = new MpConfig();
+        Track p1 = Track.fromJson(track("bilibili", "BV1xx411c7mD", 200_000L), cfg);
+        Track p2 = Track.fromJson(track("bilibili", "BV1xx411c7mD_p2", 200_000L), cfg);
+        Track p12 = Track.fromJson(track("bilibili", "BV1xx411c7mD_p12", 200_000L), cfg);
+        assertEquals("bilibili:BV1xx411c7mD", p1.key());
+        assertEquals("bilibili:BV1xx411c7mD_p2", p2.key());
+        assertFalse(p1.key().equals(p2.key()), "P1 与 P2 必须是两个不同的身份");
+        assertFalse(p2.key().equals(p12.key()), "不同页码必须是不同的身份");
+        assertThrows(IllegalArgumentException.class,
+                () -> Track.fromJson(track("bilibili", "BV1xx411c7mD:2", 200_000L), cfg));
+    }
+
+    @Test
     void trialClipIsRejectedBecauseOneLinkIsSharedByTheWholeRoom() {
         MpConfig cfg = new MpConfig();
         JsonObject o = track("netease", "123456", 200_000L);
